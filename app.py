@@ -453,7 +453,18 @@ if run_btn:
                 chunks = chunk_audio(wav_path)
             else:
                 # ── YouTube URL ──
-                chunks = process_input(source.strip())
+                try:
+                    chunks = process_input(source.strip())
+                except Exception as dl_err:
+                    err_str = str(dl_err)
+                    if "403" in err_str or "Forbidden" in err_str or "unable to download" in err_str:
+                        progress_placeholder.error(
+                            "🌐 **YouTube Cloud Server Restriction**: YouTube blocks direct video downloads from cloud hosting IP ranges (HTTP 403 Forbidden).\n\n"
+                            "👉 **Solution**: Please switch to the **📁 Upload File** tab above and upload your audio/video file directly, or run ScribeFlow AI locally!"
+                        )
+                        st.stop()
+                    else:
+                        raise dl_err
 
             update_step("audio", "done")
 
