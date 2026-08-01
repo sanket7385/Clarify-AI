@@ -32,7 +32,7 @@ def download_youtube_audio(url: str, max_attempts: int = 3) -> str:
     file_id = f"yt_{uuid.uuid4()}"
     output_template = os.path.join(DOWNLOAD_DIR, f"{file_id}.%(ext)s")
     ydl_opts = {
-        "format": "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best",
+        "format": "bestaudio/best",
         "outtmpl": output_template,
         "postprocessors": [
             {
@@ -49,8 +49,13 @@ def download_youtube_audio(url: str, max_attempts: int = 3) -> str:
         "file_access_retries": 5,
         "extractor_args": {
             "youtube": {
-                "player_client": ["android_vr"]
+                "player_client": ["android_vr", "android", "web", "mweb"]
             }
+        },
+        "http_headers": {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-us,en;q=0.5",
         },
     }
 
