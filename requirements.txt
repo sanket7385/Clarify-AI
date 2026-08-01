@@ -4,7 +4,6 @@
 # ── Audio / Video acquisition ─────────────────────────────────────────────────
 yt-dlp>=2024.4.9                  # Download audio from YouTube URLs
 pydub>=0.25.1                     # Audio file manipulation / format conversion
-pyaudioop>=0.1.0                  # Compatibility fix for pydub on Python 3.13+
 
 # ── Speech-to-Text (local Whisper) ────────────────────────────────────────────
 openai-whisper>=20231117          # OpenAI Whisper (runs locally)
