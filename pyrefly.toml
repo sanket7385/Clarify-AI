@@ -1,0 +1,18 @@
+# pyrefly.toml — Pyrefly static analyser configuration for ScribeFlow AI
+# Tells Pyrefly where to find installed packages so it resolves all imports correctly.
+
+# Point Pyrefly's import resolution to the .venv site-packages
+search-path = [
+  ".venv/Lib/site-packages"
+]
+
+# Exclude virtual environment from being type-checked itself
+project-excludes = [
+  ".venv/**"
+]
+
+# Python platform
+python-platform = "windows"
+
+# Python version
+python-version = "3.12"

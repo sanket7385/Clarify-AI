@@ -1,0 +1,14 @@
+{
+  "python.defaultInterpreterPath": "d:/AI Assistant/.venv/Scripts/python.exe",
+  "python.pythonPath": "d:/AI Assistant/.venv/Scripts/python.exe",
+  "python.analysis.extraPaths": [
+    "d:/AI Assistant/.venv/Lib/site-packages"
+  ],
+  "python.analysis.venvPath": "d:/AI Assistant",
+  "python.analysis.venv": ".venv",
+  "pyrefly.pythonInterpreter": "d:/AI Assistant/.venv/Scripts/python.exe",
+  "pyrefly.venvPath": "d:/AI Assistant/.venv",
+  "[python]": {
+    "editor.defaultFormatter": null
+  }
+}

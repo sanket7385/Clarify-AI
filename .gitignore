@@ -1,0 +1,20 @@
+.env
+.env.env
+
+# Virtual environment
+.venv/
+
+# Runtime data directories
+downloads/
+vector_db/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log
+
+# Build / dist artifacts
+build.log
