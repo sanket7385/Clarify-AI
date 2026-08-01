@@ -34,8 +34,15 @@ def download_youtube_audio(url: str, max_attempts: int = 3) -> str:
 
     last_error = None
     for attempt in range(1, max_attempts + 1):
+        if attempt == 1:
+            clients = ["web_embedded", "ios", "android"]
+        elif attempt == 2:
+            clients = ["mweb", "web", "android"]
+        else:
+            clients = ["tv_embedded", "android_vr", "web"]
+
         ydl_opts = {
-            "format": "ba/b",
+            "format": "bestaudio/best",
             "outtmpl": output_template,
             "postprocessors": [
                 {
@@ -54,11 +61,11 @@ def download_youtube_audio(url: str, max_attempts: int = 3) -> str:
             "file_access_retries": 5,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["ios", "android", "web"] if attempt == 1 else ["mweb", "web", "android"],
+                    "player_client": clients,
                 }
             },
             "http_headers": {
-                "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                 "Accept-Language": "en-us,en;q=0.5",
             },
