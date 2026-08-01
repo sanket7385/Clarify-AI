@@ -3,6 +3,7 @@
 
 # Virtual environment
 .venv/
+venv/
 
 # Runtime data directories
 downloads/

@@ -105,7 +105,8 @@ cd scribeflow-ai
 # Create the .env file with your API keys
 cat > .env << 'EOF'
 MISTRAL_API_KEY=your_mistral_api_key_here
-WHISPER_MODEL=tiny
+SARVAM_API_KEY=your_sarvam_api_key_here
+WHISPER_MODEL=small
 EOF
 
 # Build and start (first build takes 5-10 minutes)

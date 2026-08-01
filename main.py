@@ -7,39 +7,32 @@ from core.summarizer import summarize, generate_title
 from core.extractor import extract_action_items, extract_key_decisions, extract_questions
 from core.rag_engine import build_rag_chain, ask_question
 
-
 load_dotenv()
 
-def run_pipeline(source :str, language :str = "english") -> dict:
-    print("starting ScribeFlow AI")
 
-    # Validate environment keys
+def run_pipeline(source: str, language: str = "english") -> dict:
     if not os.getenv("MISTRAL_API_KEY"):
         raise RuntimeError("MISTRAL_API_KEY is not set in environment or .env file.")
     if language.lower() == "hinglish" and not os.getenv("SARVAM_API_KEY"):
-        raise RuntimeError("SARVAM_API_KEY is not set in environment or .env file, which is required for hinglish.")
+        raise RuntimeError("SARVAM_API_KEY is not set, required for hinglish.")
 
     chunks = process_input(source)
-
     try:
         transcript = transcribe_all(chunks, language)
-        print(f"raw transcription (first 300 characters) {transcript[:300]}")
 
-        # Clean up chunk files immediately after transcription
         for chunk in chunks:
             try:
                 if os.path.exists(chunk):
                     os.remove(chunk)
-            except Exception as e:
-                print(f"Failed to remove chunk file {chunk}: {e}")
+            except Exception:
+                pass
 
         title = generate_title(transcript)
         summary = summarize(transcript)
         action_item = extract_action_items(transcript)
         decisions = extract_key_decisions(transcript)
         questions = extract_questions(transcript)
-        
-        # Build vector store with a unique collection name to prevent collisions
+
         collection_name = f"meeting_{uuid.uuid4()}"
         rag_chain = build_rag_chain(transcript, collection_name=collection_name)
 
@@ -53,38 +46,33 @@ def run_pipeline(source :str, language :str = "english") -> dict:
             "rag_chain": rag_chain,
         }
     except Exception as err:
-        # Clean up chunk files on failure to prevent space leaks
         for chunk in chunks:
             try:
                 if os.path.exists(chunk):
                     os.remove(chunk)
-            except:
+            except Exception:
                 pass
         raise err
 
+
 if __name__ == "__main__":
-    # CLI entry point
     source = input("Enter YouTube URL or local file path: ").strip()
     language = input("Language (english/hinglish): ").strip() or "english"
     result = run_pipeline(source, language)
 
-    print("\n" + "=" * 60)
-    print(f"📌 Title: {result['title']}")
-    print(f"\n📋 Summary:\n{result['summary']}")
-    print(f"\n✅ Action Items:\n{result['action_items']}")
-    print(f"\n🔑 Key Decisions:\n{result['key_decisions']}")
-    print(f"\n❓ Open Questions:\n{result['open_questions']}")
-    print("=" * 60)
+    print(f"\nTitle: {result['title']}")
+    print(f"\nSummary:\n{result['summary']}")
+    print(f"\nAction Items:\n{result['action_items']}")
+    print(f"\nKey Decisions:\n{result['key_decisions']}")
+    print(f"\nOpen Questions:\n{result['open_questions']}")
 
-    # Phase 2 — Chat with your meeting via RAG
-    print("\n💬 Chat with your meeting (type 'exit' to quit)\n")
+    print("\nChat with your meeting (type 'exit' to quit)\n")
     rag_chain = result["rag_chain"]
     while True:
         question = input("You: ").strip()
         if question.lower() in ["exit", "quit", "q"]:
-            print("👋 Goodbye!")
             break
         if not question:
             continue
         answer = ask_question(rag_chain, question)
-        print(f"\n🤖 Assistant: {answer}\n")
+        print(f"\nAssistant: {answer}\n")

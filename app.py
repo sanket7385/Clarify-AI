@@ -1,12 +1,23 @@
 import streamlit as st
 import time
 import os
+import sys
 from dotenv import load_dotenv
+
+def safe_print(*args, **kwargs):
+    try:
+        print(*args, **kwargs)
+    except Exception:
+        try:
+            clean = [str(a).encode('ascii', errors='replace').decode('ascii') for a in args]
+            print(*clean, **kwargs)
+        except Exception:
+            pass
 from utils.audio_processor import process_input, save_uploaded_file, convert_to_wav, chunk_audio
 from core.transcriber import transcribe_all
 from core.summarizer import summarize, generate_title
 from core.extractor import extract_action_items, extract_key_decisions, extract_questions
-from core.rag_engine import build_rag_chain, ask_question
+from core.rag_engine import build_rag_chain, load_rag_chain, ask_question
 
 load_dotenv()
 
@@ -412,14 +423,18 @@ if run_btn:
                     persist_directory=CHROMA_DIR
                 )
                 old_vs.delete_collection()
-                print(f"Deleted old Chroma collection: {st.session_state.current_collection}")
+                safe_print(f"Deleted old Chroma collection: {st.session_state.current_collection}")
             except Exception as e:
-                print(f"Error deleting old collection: {e}")
+                safe_print(f"Error deleting old collection: {e}")
                 
         new_collection = f"meeting_{uuid.uuid4()}"
         st.session_state.current_collection = new_collection
 
         progress_placeholder = st.empty()
+
+        saved_path: str | None = None
+        wav_path: str | None = None
+        chunks: list[str] = []
 
         def update_step(key, state):
             st.session_state.pipeline_steps[key] = state
@@ -429,8 +444,9 @@ if run_btn:
                 st.info("⚙️ Pipeline running — see sidebar for live status…")
 
             update_step("audio", "active")
+            progress_placeholder.info("⚙️ **Step 1/6**: Downloading audio stream & creating processing chunks...")
 
-            if has_upload:
+            if has_upload and uploaded_file is not None:
                 # ── Uploaded file path ──
                 saved_path = save_uploaded_file(uploaded_file)
                 wav_path = convert_to_wav(saved_path)
@@ -442,7 +458,12 @@ if run_btn:
             update_step("audio", "done")
 
             update_step("transcript", "active")
-            transcript = transcribe_all(chunks, language)
+            def on_transcribe_progress(current: int, total: int):
+                pct = int((current / total) * 100)
+                progress_placeholder.info(f"⚙️ **Step 2/6**: Transcribing audio chunk {current}/{total} ({pct}%) using Whisper AI...")
+
+            selected_lang = str(language) if language else "english"
+            transcript = transcribe_all(chunks, selected_lang, progress_callback=on_transcribe_progress)
             update_step("transcript", "done")
 
             # Clean up intermediate audio chunks to save space
@@ -456,28 +477,32 @@ if run_btn:
             # Clean up uploaded files
             if has_upload:
                 try:
-                    if os.path.exists(saved_path):
+                    if saved_path and os.path.exists(saved_path):
                         os.remove(saved_path)
-                    if os.path.exists(wav_path):
+                    if wav_path and os.path.exists(wav_path):
                         os.remove(wav_path)
                 except Exception as ex:
                     print(f"Error removing uploaded files: {ex}")
 
             update_step("title", "active")
+            progress_placeholder.info("⚙️ **Step 3/6**: Generating meeting title...")
             title = generate_title(transcript)
             update_step("title", "done")
 
             update_step("summary", "active")
+            progress_placeholder.info("⚙️ **Step 4/6**: Summarising meeting transcript with Mistral AI...")
             summary = summarize(transcript)
             update_step("summary", "done")
 
             update_step("extract", "active")
+            progress_placeholder.info("⚙️ **Step 5/6**: Extracting action items, decisions & open questions...")
             action_items  = extract_action_items(transcript)
             decisions     = extract_key_decisions(transcript)
             questions     = extract_questions(transcript)
             update_step("extract", "done")
 
             update_step("rag", "active")
+            progress_placeholder.info("⚙️ **Step 6/6**: Building Vector Store & RAG Chat Engine...")
             rag_chain = build_rag_chain(transcript, collection_name=new_collection)
             update_step("rag", "done")
 
@@ -498,17 +523,17 @@ if run_btn:
 
         except Exception as e:
             # Clean up files on failure to prevent space leaks
-            if 'chunks' in locals():
+            if chunks:
                 for chunk_file in chunks:
                     try:
                         if os.path.exists(chunk_file):
                             os.remove(chunk_file)
                     except:
                         pass
-            if 'saved_path' in locals() and os.path.exists(saved_path):
+            if saved_path and os.path.exists(saved_path):
                 try: os.remove(saved_path)
                 except: pass
-            if 'wav_path' in locals() and os.path.exists(wav_path):
+            if wav_path and os.path.exists(wav_path):
                 try: os.remove(wav_path)
                 except: pass
 
@@ -607,7 +632,11 @@ if st.session_state.result:
 
     if send_btn and user_input.strip():
         with st.spinner("Thinking…"):
-            answer = ask_question(r["rag_chain"], user_input.strip())
+            rag_chain = r.get("rag_chain")
+            if not rag_chain and st.session_state.get("current_collection"):
+                rag_chain = load_rag_chain(st.session_state.current_collection)
+                st.session_state.result["rag_chain"] = rag_chain
+            answer = ask_question(rag_chain, user_input.strip())
         st.session_state.chat_history.append({"role": "user",      "content": user_input.strip()})
         st.session_state.chat_history.append({"role": "assistant", "content": answer})
         st.rerun()
