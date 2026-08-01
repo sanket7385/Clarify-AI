@@ -19,6 +19,17 @@ def safe_print(*args, **kwargs):
 DOWNLOAD_DIR = 'downloads'
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
+try:
+    import imageio_ffmpeg  # type: ignore[import-untyped]
+    ffmpeg_bin = imageio_ffmpeg.get_ffmpeg_exe()
+    if ffmpeg_bin and os.path.exists(ffmpeg_bin):
+        AudioSegment.converter = ffmpeg_bin  # type: ignore[assignment]
+        ffprobe_bin = os.path.join(os.path.dirname(ffmpeg_bin), "ffprobe")
+        if os.path.exists(ffprobe_bin):
+            AudioSegment.ffprobe = ffprobe_bin
+except Exception:
+    pass
+
 
 def save_uploaded_file(uploaded_file) -> str:
     file_ext = os.path.splitext(uploaded_file.name)[1]
