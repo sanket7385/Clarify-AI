@@ -31,36 +31,50 @@ def save_uploaded_file(uploaded_file) -> str:
 def download_youtube_audio(url: str, max_attempts: int = 3) -> str:
     file_id = f"yt_{uuid.uuid4()}"
     output_template = os.path.join(DOWNLOAD_DIR, f"{file_id}.%(ext)s")
-    ydl_opts = {
-        "format": "bestaudio/best",
-        "outtmpl": output_template,
-        "postprocessors": [
-            {
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "wav",
-                "preferredquality": "128",
-            }
-        ],
-        "quiet": True,
-        "no_warnings": True,
-        "socket_timeout": 30,
-        "retries": 10,
-        "fragment_retries": 10,
-        "file_access_retries": 5,
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["android_vr", "android", "web", "mweb"]
-            }
-        },
-        "http_headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-us,en;q=0.5",
-        },
-    }
 
     last_error = None
     for attempt in range(1, max_attempts + 1):
+        # On attempt 2+, use cloud-friendly options that bypass 403 Forbidden on datacenter IPs
+        if attempt == 1:
+            player_clients = ["android_vr", "android", "web", "mweb"]
+            user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            skip_formats = []
+        else:
+            player_clients = ["mweb", "android", "web", "ios"]
+            user_agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
+            skip_formats = ["hls", "dash"]
+
+        ydl_opts = {
+            "format": "ba/b" if attempt > 1 else "bestaudio/best",
+            "outtmpl": output_template,
+            "postprocessors": [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "wav",
+                    "preferredquality": "128",
+                }
+            ],
+            "quiet": True,
+            "no_warnings": True,
+            "nocheckcertificate": True,
+            "geo_bypass": True,
+            "socket_timeout": 30,
+            "retries": 10,
+            "fragment_retries": 10,
+            "file_access_retries": 5,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": player_clients,
+                    "skip": skip_formats,
+                }
+            },
+            "http_headers": {
+                "User-Agent": user_agent,
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-us,en;q=0.5",
+            },
+        }
+
         try:
             safe_print(f"Downloading YouTube audio (Attempt {attempt}/{max_attempts})...")
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
